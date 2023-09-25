@@ -38,6 +38,7 @@ def load_net2_data(root_path, root_rain_path, path: str, batch_size):
 
     with open(root_rain_path + path, "rb") as f:
         YS = pickle.load(f)            # shape: time_steps, H, L
+        print(YS.shape)
     return (XS, YS)
 
 

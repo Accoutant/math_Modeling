@@ -163,6 +163,7 @@ class Trainer:
         print(path_list)
         train_path_list = path_list[:130]
         test_path_list = path_list[130:]
+        animator = d2l.Animator(xlabel="epoch", ylabel="CSI")
         for epoch in range(max_epochs):
             path_num = 1
             total_path_num = len(train_path_list)
@@ -190,7 +191,9 @@ class Trainer:
             torch.save(self.net.state_dict(), "param" + str(epoch+1) + ".pkl")
             # ecaluate
             with torch.no_grad():
-                evaluate(self.net, test_path_list, time_steps=10, batch_size=batch_size, jump=jump, device=self.device, save_path="param" + str(epoch+1) + ".pkl")
+                CIS = evaluate(self.net, test_path_list, time_steps=10, batch_size=batch_size, jump=jump, device=self.device, save_path="param" + str(epoch+1) + ".pkl")
+
+
 
     def init_weights(self, m):
         if type(m) == nn.Conv2d or type(m) == nn.Conv3d or type(m) == nn.ConvTranspose2d:
@@ -219,6 +222,8 @@ def evaluate(net, path_list: list, time_steps, batch_size, jump, device, save_pa
             metric.add(CSI, 1)
             print(CSI)
             print("CSI %.5f" % (metric[0]/metric[1]))
+    print(metric[0])
+    return metric[0]/metric[1]
 
 
 def matrix(output, target, device, threshold=35):

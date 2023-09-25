@@ -53,4 +53,4 @@ def load_rain_data(root_path):
             # data.shape: time_steps, H, L
 
 
-# load_rain_data("./NJU_CPOL_kdpRain")
+load_rain_data("./NJU_CPOL_kdpRain")

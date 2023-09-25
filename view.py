@@ -6,7 +6,7 @@ import pickle
 import torch
 
 
-def view(root_path="./NJU_CPOL_update2308/dBZ/1.0km/data_dir_046"):
+def view(root_path="./NJU_CPOL_update2308/dBZ/1.0km/data_dir_028"):
     root_path = (root_path)
     path_list = os.listdir(root_path)
 
@@ -55,5 +55,7 @@ def count_valid_all(choose_threshold=0.01):
 
 if __name__ == "__main__":
     choose_hits = count_valid_all()
+    with open("choose_list.pkl", "wb") as f:
+        pickle.dump(choose_hits, f)
     #view("./NJU_CPOL_update2308/dBZ/1.0km/data_dir_157")
-    print(len(choose_hits))
+    print(choose_hits[0])
