@@ -1,4 +1,6 @@
 import pickle
+import random
+
 import torch
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import matplotlib.pyplot as plt
@@ -29,22 +31,21 @@ def split_data(paths: list, time_steps, batch_size):
     return train_iter
 
 
+def load_net2_data(root_path, root_rain_path, path: str, batch_size):
+    with open(root_path + path, "rb") as f:
+        XS = pickle.load(f)
+        XS = XS[:, :, [0, 2], :, :]    # shape: time_steps, height, features, H, L
+
+    with open(root_rain_path + path, "rb") as f:
+        YS = pickle.load(f)            # shape: time_steps, H, L
+    return (XS, YS)
+
+
 def load_dir(root_path, path):
     data = np.load(str(root_path) + str(path))
     return data
 
 
 if __name__ == "__main__":
-    """
-    path = "data_dir_000.pkl"
-    train_iter = split_data(path, 10, 1)
-    test = next(iter(train_iter))[0][0, 1, 0, 2, :, :]
-    print(test.shape)
-    plt.imshow(test.detach().numpy())
-    plt.show()
-    """
-    list = [1, 2, 3, 4, 5, 6, 7]
-    n = len(list)
-    for i in range(0, n, 3):
-        path = list[i:i+3]
-        print(path)
+    paths = ["data_dir_000.pkl", "data_dir_001.pkl"]
+    load_net2_data("./data/", "./rain_data/", paths, 2)

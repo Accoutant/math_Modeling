@@ -36,6 +36,7 @@ def count_valid(X, threshold=5):
 
 
 def count_valid_all(choose_threshold=0.01):
+    """选择降雨比较显著的文件地址"""
     path_list = os.listdir("./data")
     hits = []
     choose_hits = []
