@@ -161,7 +161,7 @@ class Trainer:
         random.seed(seed)
         random.shuffle(path_list)
         print(path_list)
-        path_list = path_list[:220]
+        path_list = path_list[:130]
         for epoch in range(max_epochs):
             path_num = 1
             total_path_num = len(path_list)
@@ -176,7 +176,7 @@ class Trainer:
                     YS = YS.to(self.device)
                     output = self.net(XS)
                     loss = self.loss(output, YS)
-                    # loss = loss + torch.log(k/loss + 1)
+                    loss = loss + torch.log(k/loss + 1)
                     self.optimizer.zero_grad()
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1)
@@ -198,13 +198,14 @@ class Trainer:
 def evaluate(net, path_list: list, time_steps, batch_size, jump, device, save_path):
     net = net.to(device)
     net.load_state_dict(torch.load(save_path))
-    path_list = path_list[:50]
+    path_list = path_list[130:]
     n = len(path_list)
     metric = d2l.Accumulator(2)
+    print(n)
     for i in range(0, n, jump):
         paths = path_list[i: i + jump]
-        train_iter = split_data(paths, time_steps, batch_size)
-        for XS, YS in train_iter:
+        test_iter = split_data(paths, time_steps, batch_size)
+        for XS, YS in test_iter:
             XS = XS.to(device)
             YS = YS.to(device)
             output = net(XS)
@@ -215,26 +216,28 @@ def evaluate(net, path_list: list, time_steps, batch_size, jump, device, save_pa
             false_hit = torch.sum(false_hit).item()
             CSI = hit / (hit + miss + false_hit)
             metric.add(CSI, 1)
-            print("CSI %.2f" % (metric[0]/metric[1]))
+            print(CSI)
+            print("CSI %.5f" % (metric[0]/metric[1]))
 
 
 def matrix(output, target, device, threshold=35):
     # output.shape: batch_size, time_steps, H, L
     # target.shape: batch_size, time_steps, H, L
-    def _get_evmatrix(X, threshold=threshold):
+    def get_evmatrix(X, threshold=threshold):
         temp = X > threshold
         X[temp] = 1
         X[~temp] = 0
         return X
-    output_matrix = _get_evmatrix(output)
-    target_matrix = _get_evmatrix(target)
+    output_matrix = get_evmatrix(output)
+    target_matrix = get_evmatrix(target)
     hit_matrix = torch.eq(output_matrix, target_matrix) & (output_matrix == 1)
     miss_matrix = (target_matrix == 1) & (output_matrix == 0)
     false_matrix = (target_matrix == 0) & (output_matrix == 1)
 
-    hit = torch.zeros(output.shape, device=device)
-    miss = torch.zeros(output.shape, device=device)
-    false_hit = torch.zeros(output.shape, device=device)
+    shape = output.shape
+    hit = torch.zeros(shape, device=device)
+    miss = torch.zeros(shape, device=device)
+    false_hit = torch.zeros(shape, device=device)
 
     hit[hit_matrix] = 1
     miss[miss_matrix] = 1
@@ -243,6 +246,22 @@ def matrix(output, target, device, threshold=35):
     return hit, miss, false_hit
 
 
+"""
+# output.shape: batch_size, time_steps, H, L
+output = torch.randint(0, 90, (6, 10, 256, 256))
+target = torch.randint(0, 90, (6, 10, 256, 256))
+
+a = torch.zeros(output.shape)
+
+
+
+hit, miss, false_hit = matrix(output, target, device=torch.cpu)
+hit = torch.sum(hit).item()
+
+miss = torch.sum(miss).item()
+false_hit = torch.sum(false_hit).item()
+print(hit/(hit + miss + false_hit))
+"""
 
 
 

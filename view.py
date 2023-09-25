@@ -6,7 +6,6 @@ import pickle
 import torch
 
 
-
 def view(root_path="./NJU_CPOL_update2308/dBZ/1.0km/data_dir_046"):
     root_path = (root_path)
     path_list = os.listdir(root_path)
@@ -27,7 +26,7 @@ def load_dir(path):
     return data
 
 
-def count_valid(X, threshold=10):
+def count_valid(X, threshold=5):
     # X.shape: time_steps, height, features, H, L
     X = X[:, 0, 0, :, :]
     temp = torch.zeros(X.shape)
@@ -36,18 +35,24 @@ def count_valid(X, threshold=10):
     return hit / torch.numel(torch.tensor(X))
 
 
-def count_valid_all():
+def count_valid_all(choose_threshold=0.01):
     path_list = os.listdir("./data")
     hits = []
+    choose_hits = []
     for path in path_list:
         path = "./data/" + path
         data = load_dir(path)
         hit = count_valid(data)
         hits.append(hit)
+        if hit > choose_threshold:
+            choose_hits.append(path)
         print("path %s hit %.4f" % (path, hit))
-    plt.hist(hits)
+    # plt.hist(hits, bins=50, range=(-0.1, 0.3))
+    # plt.show()
+    return choose_hits
 
 
 if __name__ == "__main__":
-    #count_valid_all()
-    view("./NJU_CPOL_update2308/dBZ/1.0km/data_dir_100")
+    choose_hits = count_valid_all()
+    #view("./NJU_CPOL_update2308/dBZ/1.0km/data_dir_157")
+    print(len(choose_hits))

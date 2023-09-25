@@ -8,7 +8,7 @@ import numpy as np
 def split_data(paths: list, time_steps, batch_size):
     XS_list = []
     for path in paths:
-        with open("./data/"+path, "rb") as f:
+        with open(path, "rb") as f:
             XS = pickle.load(f)
             XS_list.append(XS)
     XS = np.concatenate(XS_list, axis=0)
