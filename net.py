@@ -201,7 +201,6 @@ def evaluate(net, path_list: list, time_steps, batch_size, jump, device, save_pa
     path_list = path_list[130:]
     n = len(path_list)
     metric = d2l.Accumulator(2)
-    print(n)
     for i in range(0, n, jump):
         paths = path_list[i: i + jump]
         test_iter = split_data(paths, time_steps, batch_size)
