@@ -9,8 +9,8 @@ import random
 class EncoderBlock(nn.Module):
     def __init__(self):
         super().__init__()
-        self.b1 = nn.Sequential(nn.Conv2d(3, 64, (7, 7), 2, 3),
-                                nn.BatchNorm2d(64),
+        self.b1 = nn.Conv2d(3, 64, (7, 7), 2, 3)
+        self.b2 = nn.Sequential(nn.BatchNorm2d(64),
                                 nn.ReLU(),
                                 nn.MaxPool2d(3, 2, 1))
         self.cov1 = d2l.Residual(64, 64, use_1x1conv=False, strides=1)
@@ -22,13 +22,14 @@ class EncoderBlock(nn.Module):
     def forward(self, X):
         # X.shape: batch_size, features, L, H
         X0 = self.b1(X)
-        X1 = self.cov1(X0)
+        X1 = self.b2(X0)
+        X1 = self.cov1(X1)
         X2 = self.cov2(X1)
         X3 = self.cov3(X2)
         X4 = self.cov4(X3)
         X_flattened = self.adaptiveavgpool(X4)
         X_flattened = torch.flatten(X_flattened, 1, -1)
-        output = (X1, X2, X3, X4)
+        output = (X0, X1, X2, X3, X4)
         return output, X_flattened
 
 
@@ -99,17 +100,17 @@ class DecoderBlock(nn.Module):
         self.cov2 = Reresidual(256, 64, use_1x1conv=True, strides=2)
         self.cov1 = nn.ConvTranspose2d(128, 64, kernel_size=(3, 3), stride=1, padding=1)
         self.unpool = nn.UpsamplingNearest2d(scale_factor=2)
-        self.uncov = nn.ConvTranspose2d(64, 1, (4, 4), 2, 1)
+        self.uncov = nn.ConvTranspose2d(128, 1, (4, 4), 2, 1)
 
     def forward(self, X, state):
         # X就是lstm.shape lstm_output.shape: batch_size, 512, 2, 2
         X = self.lstm_up(X)  # 把X变为512, 4, 4
-        X4 = self.cov4(torch.cat((X, state[3]), dim=1))
-        X3 = self.cov3(torch.cat((X4, state[2]), dim=1))
-        X2 = self.cov2(torch.cat((X3, state[1]), dim=1))
-        X1 = self.cov1(torch.cat((X2, state[0]), dim=1))
+        X4 = self.cov4(torch.cat((X, state[4]), dim=1))
+        X3 = self.cov3(torch.cat((X4, state[3]), dim=1))
+        X2 = self.cov2(torch.cat((X3, state[2]), dim=1))
+        X1 = self.cov1(torch.cat((X2, state[1]), dim=1))
         X1 = self.unpool(X1)
-        output = self.uncov(X1)
+        output = self.uncov(torch.cat((X1, state[0]), dim=1))
         return output
 
 
@@ -240,6 +241,9 @@ def matrix(output, target, device, threshold=35):
     false_hit[false_matrix] = 1
 
     return hit, miss, false_hit
+
+
+# def choose_data():
 
 
 
