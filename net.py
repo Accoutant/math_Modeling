@@ -9,21 +9,25 @@ import random
 class EncoderBlock(nn.Module):
     def __init__(self):
         super().__init__()
-        self.cov1 = d2l.Residual(3, 32, use_1x1conv=True, strides=2)
-        self.cov2 = d2l.Residual(32, 64, use_1x1conv=True, strides=2)
-        self.cov3 = d2l.Residual(64, 128, use_1x1conv=True, strides=2)
-        self.cov4 = d2l.Residual(128, 256, use_1x1conv=True, strides=2)
-        self.cov5 = nn.Conv2d(256, 1, (1, 1))
-        self.flatten = nn.Flatten()
+        self.b1 = nn.Sequential(nn.Conv2d(3, 64, (7, 7), 2, 3),
+                                nn.BatchNorm2d(64),
+                                nn.ReLU(),
+                                nn.MaxPool2d(3, 2, 1))
+        self.cov1 = d2l.Residual(64, 64, use_1x1conv=False, strides=1)
+        self.cov2 = d2l.Residual(64, 128, use_1x1conv=True, strides=2)
+        self.cov3 = d2l.Residual(128, 256, use_1x1conv=True, strides=2)
+        self.cov4 = d2l.Residual(256, 512, use_1x1conv=True, strides=2)
+        self.adaptiveavgpool = nn.AdaptiveAvgPool2d((2, 2))
 
     def forward(self, X):
         # X.shape: batch_size, features, L, H
-        X1 = self.cov1(X)
+        X0 = self.b1(X)
+        X1 = self.cov1(X0)
         X2 = self.cov2(X1)
         X3 = self.cov3(X2)
         X4 = self.cov4(X3)
-        X5 = self.cov5(X4)
-        X_flattened = self.flatten(X5)
+        X_flattened = self.adaptiveavgpool(X4)
+        X_flattened = torch.flatten(X_flattened, 1, -1)
         output = (X1, X2, X3, X4)
         return output, X_flattened
 
@@ -37,7 +41,7 @@ class CovWithLstmEncoder(nn.Module):
         self.encoderblocks = nn.Sequential()
         for i in range(time_steps):
             self.encoderblocks.add_module("encoderblock" + str(i), EncoderBlock())
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=1, batch_first=True)
+        self.lstm = nn.LSTM(input_size=2048, hidden_size=2048, num_layers=1, batch_first=True)
 
     def forward(self, XS: torch.Tensor):
         # XS.shape: data_shape: batch_size, time_steps, height, features, H, L
@@ -50,18 +54,18 @@ class CovWithLstmEncoder(nn.Module):
         time_steps = XS.shape[1]
         XS = XS.permute(1, 0, 2, 3, 4)
         outputs = []
-        X_flatteneds = torch.zeros((time_steps, batch_size, 256), device=d2l.try_gpu())
+        X_flatteneds = torch.zeros((time_steps, batch_size, 2048), device=d2l.try_gpu())
         for t, X in enumerate(XS):
             # X.shape: batch_size, features, L, H
             output, X_flattened = self.encoderblocks[t](X)
             X_flatteneds[t, :, :] = X_flattened
             outputs.append(output)
         X_flatteneds = X_flatteneds.permute(1, 0, 2)
-        # X_flatteneds.shape: batch_size, time_steps, 256
+        # X_flatteneds.shape: batch_size, time_steps, 2048
         lstm_outputs, (h, c) = self.lstm(X_flatteneds)
-        # lstm_output.shape: batch_size, time_steps, 256
-        lstm_outputs = lstm_outputs.reshape(batch_size, time_steps, 16, 16)
-        # lstm_output.shape: batch_size, time_steps, 16, 16
+        # lstm_output.shape: batch_size, time_steps, 2048
+        lstm_outputs = lstm_outputs.reshape(batch_size, time_steps, 512, 2, 2)
+        # lstm_output.shape: batch_size, time_steps, 512, 2, 2
         return outputs, lstm_outputs
 
 
@@ -89,17 +93,25 @@ class Reresidual(nn.Module):
 class DecoderBlock(nn.Module):
     def __init__(self):
         super().__init__()
-        self.cov4 = nn.ConvTranspose2d(257, 128, (4, 4), 2, 1)
-        self.cov3 = Reresidual(256, 64, use_1x1conv=True, strides=2)
-        self.cov2 = Reresidual(128, 32, use_1x1conv=True, strides=2)
-        self.cov1 = Reresidual(64, 1, use_1x1conv=True, strides=2)
+        self.lstm_up = nn.UpsamplingNearest2d(scale_factor=4)
+        self.cov4 = nn.ConvTranspose2d(1024, 256, (4, 4), 2, 1)
+        self.cov3 = Reresidual(512, 128, use_1x1conv=True, strides=2)
+        self.cov2 = Reresidual(256, 64, use_1x1conv=True, strides=2)
+        self.cov1 = Reresidual(128, 64, use_1x1conv=True, strides=1)
+        self.unpool = nn.UpsamplingNearest2d(scale_factor=2)
+        self.uncov = nn.ConvTranspose2d(64, 1, (4, 4), 2, 1)
 
     def forward(self, X, state):
+        # X就是lstm.shape lstm_output.shape: batch_size, 512, 2, 2
+        X = self.lstm_up(X)  # 把X变为512, 4, 4
+        print(state[3].shape)
         X4 = self.cov4(torch.cat((X, state[3]), dim=1))
         X3 = self.cov3(torch.cat((X4, state[2]), dim=1))
         X2 = self.cov2(torch.cat((X3, state[1]), dim=1))
         X1 = self.cov1(torch.cat((X2, state[0]), dim=1))
-        return X1
+        X1 = self.unpool(X1)
+        output = self.uncov(X1)
+        return output
 
 
 class CovWithLstmDecoder(nn.Module):
@@ -110,13 +122,14 @@ class CovWithLstmDecoder(nn.Module):
         for i in range(time_steps):
             self.decoderblocks.add_module("decoderblock"+str(i), DecoderBlock())
 
+
     def forward(self, outputs, lstm_outputs):
         # len(outputs)=10
         batch_size = lstm_outputs.shape[0]
-        # lstm_output.shape: batch_size, time_steps, 16, 16
+        # lstm_output.shape: batch_size, time_steps, 512, 2, 2
         decoder_outputs = []
         for i in range(self.time_steps):
-            decoder_output = self.decoderblocks[i](lstm_outputs[:, i, :, :].unsqueeze(1), outputs[i])
+            decoder_output = self.decoderblocks[i](lstm_outputs[:, i, :, :, :].squeeze(1), outputs[i])
             decoder_outputs.append(decoder_output)
         return torch.cat(decoder_outputs, dim=1)
 
@@ -233,8 +246,8 @@ def matrix(output, target, device, threshold=35):
 
 
 
+net = CovWithLstm(10)
+net = net.to(d2l.try_gpu())
+XS = torch.randn((1, 10, 3, 3, 256, 256), device=d2l.try_gpu())
+print(net(XS).shape)
 
-
-net = nn.Conv2d(3, 64, (7, 7), stride=2, padding=3)
-X = torch.randn((6, 3, 256, 256))
-print(net(X).shape)
