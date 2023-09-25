@@ -9,8 +9,8 @@ path_list = os.listdir("./data")
 net = CovWithLstm(time_steps=10)
 
 net = net.to(d2l.try_gpu())
-net.load_state_dict(torch.load("param2.pkl"))
-test_iter = split_data(["data_dir_080.pkl"], 10, 6)
+net.load_state_dict(torch.load("param1.pkl"))
+test_iter = split_data(["data_dir_060.pkl"], 10, 6)
 test_data = next(iter(test_iter))[0]
 test_data = test_data.to(d2l.try_gpu())
 output = net(test_data)

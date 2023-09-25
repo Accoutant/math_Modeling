@@ -187,7 +187,7 @@ class Trainer:
             # save_params
             torch.save(self.net.state_dict(), "param" + str(epoch+1) + ".pkl")
             # ecaluate
-            # evaluate(self.net, path_list, time_steps=10, batch_size=batch_size, jump=jump, device=self.device, save_path="param" + str(epoch+1) + ".pkl")
+            evaluate(self.net, path_list, time_steps=10, batch_size=batch_size, jump=jump, device=self.device, save_path="param" + str(epoch+1) + ".pkl")
 
     def init_weights(self, m):
         if type(m) == nn.Conv2d or type(m) == nn.Conv3d or type(m) == nn.ConvTranspose2d:

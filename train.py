@@ -6,10 +6,10 @@ import os
 from d2l import torch as d2l
 
 net = CovWithLstm(10)
-net.load_state_dict(torch.load("param0.pkl"))
+
 max_epoch = 2
 batch_size = 2
-lr = 0.001
+lr = 0.01
 loss = nn.MSELoss()
 optimizer = optim.SGD
 path_list = os.listdir("./data")
