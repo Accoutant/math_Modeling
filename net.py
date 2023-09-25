@@ -161,13 +161,14 @@ class Trainer:
         random.seed(seed)
         random.shuffle(path_list)
         print(path_list)
-        path_list = path_list[:130]
+        train_path_list = path_list[:130]
+        test_path_list = path_list[130:]
         for epoch in range(max_epochs):
             path_num = 1
-            total_path_num = len(path_list)
-            num_list = len(path_list)
+            total_path_num = len(train_path_list)
+            num_list = len(train_path_list)
             for i in range(0, num_list, jump):
-                paths = path_list[i : i + jump]
+                paths = train_path_list[i : i + jump]
                 train_iter = split_data(paths, 10, batch_size)
                 n = 1
                 n_all = len(train_iter)
@@ -188,7 +189,8 @@ class Trainer:
             # save_params
             torch.save(self.net.state_dict(), "param" + str(epoch+1) + ".pkl")
             # ecaluate
-            evaluate(self.net, path_list, time_steps=10, batch_size=batch_size, jump=jump, device=self.device, save_path="param" + str(epoch+1) + ".pkl")
+            with torch.no_grad():
+                evaluate(self.net, test_path_list, time_steps=10, batch_size=batch_size, jump=jump, device=self.device, save_path="param" + str(epoch+1) + ".pkl")
 
     def init_weights(self, m):
         if type(m) == nn.Conv2d or type(m) == nn.Conv3d or type(m) == nn.ConvTranspose2d:
