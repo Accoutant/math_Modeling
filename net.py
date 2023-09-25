@@ -97,14 +97,13 @@ class DecoderBlock(nn.Module):
         self.cov4 = nn.ConvTranspose2d(1024, 256, (4, 4), 2, 1)
         self.cov3 = Reresidual(512, 128, use_1x1conv=True, strides=2)
         self.cov2 = Reresidual(256, 64, use_1x1conv=True, strides=2)
-        self.cov1 = Reresidual(128, 64, use_1x1conv=True, strides=1)
+        self.cov1 = nn.ConvTranspose2d(128, 64, kernel_size=(3, 3), stride=1, padding=1)
         self.unpool = nn.UpsamplingNearest2d(scale_factor=2)
         self.uncov = nn.ConvTranspose2d(64, 1, (4, 4), 2, 1)
 
     def forward(self, X, state):
         # X就是lstm.shape lstm_output.shape: batch_size, 512, 2, 2
         X = self.lstm_up(X)  # 把X变为512, 4, 4
-        print(state[3].shape)
         X4 = self.cov4(torch.cat((X, state[3]), dim=1))
         X3 = self.cov3(torch.cat((X4, state[2]), dim=1))
         X2 = self.cov2(torch.cat((X3, state[1]), dim=1))
@@ -208,7 +207,6 @@ def evaluate(net, path_list: list, time_steps, batch_size, jump, device, save_pa
             XS = XS.to(device)
             YS = YS.to(device)
             output = net(XS)
-            print(output.max())
             # output.shape: batch_size, time_steps, H, L
             hit, miss, false_hit = matrix(output, YS, device)
             hit = torch.sum(hit).item()
@@ -246,8 +244,7 @@ def matrix(output, target, device, threshold=35):
 
 
 
-net = CovWithLstm(10)
-net = net.to(d2l.try_gpu())
-XS = torch.randn((1, 10, 3, 3, 256, 256), device=d2l.try_gpu())
-print(net(XS).shape)
+#net = nn.ConvTranspose2d(3, 3, kernel_size=(3, 3), stride=1, padding=1)
+#XS = torch.randn((1, 3, 64, 64))
+
 
