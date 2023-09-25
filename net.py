@@ -243,12 +243,6 @@ def matrix(output, target, device, threshold=35):
     return hit, miss, false_hit
 
 
-# def choose_data():
 
-
-
-
-#net = nn.ConvTranspose2d(3, 3, kernel_size=(3, 3), stride=1, padding=1)
-#XS = torch.randn((1, 3, 64, 64))
 
 

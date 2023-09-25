@@ -29,6 +29,11 @@ def split_data(paths: list, time_steps, batch_size):
     return train_iter
 
 
+def load_dir(root_path, path):
+    data = np.load(str(root_path) + str(path))
+    return data
+
+
 if __name__ == "__main__":
     """
     path = "data_dir_000.pkl"
