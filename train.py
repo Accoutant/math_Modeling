@@ -6,7 +6,7 @@ from d2l import torch as d2l
 from view import count_valid_all
 
 net = CovWithLstm(10)
-net.load_state_dict(torch.load("param1.pkl"))
+# net.load_state_dict(torch.load("param1.pkl"))
 max_epoch = 5
 batch_size = 6
 lr = 0.5
